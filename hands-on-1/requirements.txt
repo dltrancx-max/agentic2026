@@ -1,0 +1,9 @@
+# Hands-on #1 — Legacy Oracle Migration (Long-Horizon Autonomy x Computer-Use)
+# Python 3.10+
+flask>=3.0            # the API-free "LegacyForms" GUI
+playwright>=1.40      # drives a real Chromium browser (computer-use)
+anthropic>=0.40       # Claude vision tool-use (live mode only)
+python-dotenv>=1.0    # load ANTHROPIC_API_KEY from .env
+
+# only needed if you want to re-render architecture.png
+matplotlib>=3.7

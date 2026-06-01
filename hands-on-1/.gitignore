@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+checkpoints/*.json
+output/downloads/
+output/*.csv
+output/*.txt
+_arch_p*.png

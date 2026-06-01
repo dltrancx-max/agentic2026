@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Secrets / local config
+.env
+*.local
+
+# Generated artefacts
+hands-on-1/checkpoints/*.json
+hands-on-1/output/downloads/
+hands-on-1/output/*.csv
+hands-on-1/output/*.txt
+
+# Diagram preview scratch
+_arch_p*.png
+_v*.png
+_verify_p*.png
+
+# OS / IDE noise
+Thumbs.db
+.DS_Store
+.idea/
