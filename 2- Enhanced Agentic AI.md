@@ -83,6 +83,8 @@ A *computer-use* (or *browser*) agent is given a screenshot of a screen — a de
 - QA: exercising your *own* web app end-to-end through the real UI, the way a user would.
 - Migrating data out of a SaaS tool whose only "export" is clicking through screens.
 
+> **In summary — is computer-use a replacement for APIs? No.** It is **slow**, **expensive**, **error-compounding** (a 95%-reliable step is only ~60% reliable across ten steps), and the **riskiest pattern** to operate. The rule of thumb is **API first → MCP server second → GUI agent only as the fallback.** Its niche is the **long tail** of legacy ERPs, Citrix terminals, vendor portals, and orphaned internal tools that never got APIs — a *bridge* to systems you can't integrate any other way, not a default. **API where possible, computer-use where necessary — and only with production-grade guardrails when used.**
+
 > **The mental model:** Long-horizon autonomy (#1) tells you agents can now *sustain* multi-step work; computer-use is what lets that work reach the **systems APIs forgot.** The two together are why 2026 agents start showing up in workflows that resisted automation for twenty years.
 
 ### The Inflection Point: Long-Horizon Autonomy & Computer-Use
