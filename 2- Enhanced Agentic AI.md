@@ -97,6 +97,8 @@ Here is what that looks like in a practical, 2026 enterprise scenario.
 
 **The Scenario: The Legacy Oracle Migration**
 
+> **Hands-on #1 implements this exact scenario** as a small, runnable system you can drive yourself — a local Flask "LegacyForms" GUI with no API, a Playwright-driven computer-use worker, and a checkpointing orchestrator that recovers from an injected session timeout. See [3 - Hands-on - 1.md](3%20-%20Hands-on%20-%201.md) for the practical, and [hands-on-1/architecture.pdf](hands-on-1/architecture.pdf) for the full solution architecture and flow.
+
 Imagine a strategic initiative to migrate and reconcile 20 years of supply chain data from a deeply entrenched, legacy Oracle 8i database environment up to a modern Oracle 23ai infrastructure.
 
 The legacy environment sits behind a Citrix terminal. It has no REST APIs, no modern webhooks, and relies on an ancient Oracle Forms GUI. A human analyst typically takes three weeks to run custom queries, export the files, manually clean the data in Excel, and upload it to the new system, dealing with timeouts and UI quirks along the way.
