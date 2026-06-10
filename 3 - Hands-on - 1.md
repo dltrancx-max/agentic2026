@@ -89,23 +89,173 @@ Both modes hit the same legacy app, take the same screenshots, trigger the same 
 
 ---
 
-## Setup
+## Setup (step by step, for a first-time user)
 
-Python 3.10+, Windows / macOS / Linux. From the repo root:
+You can do this entirely on your own machine. Total time: ~10 minutes (most of it is two downloads). Total disk: ~500 MB (Python packages + Chromium browser).
 
-```bash
+### 0. Prerequisites — what you need installed first
+
+You only need two things on your computer before starting:
+
+- **Python 3.10 or newer.** Check what you have:
+  ```powershell
+  python --version
+  ```
+  If the command isn't found or shows 3.9 or older, install the latest from [python.org/downloads](https://python.org/downloads). On Windows, **tick "Add Python to PATH"** during install — otherwise `python` won't work in your terminal.
+- **git.** Check with `git --version`. If missing, install from [git-scm.com](https://git-scm.com).
+
+That's it. You do **not** need to install Chromium, Node.js, Docker, or any Anthropic SDK separately — the next steps handle all of that.
+
+### 1. Get the code
+
+If you haven't already, clone the repo (or download it as a ZIP from GitHub):
+
+```powershell
+git clone https://github.com/dltrancx-max/agentic2026.git
+cd agentic2026
+```
+
+If you already cloned it, just `cd` into the folder.
+
+### 2. Move into the hands-on folder
+
+Everything below runs from inside `hands-on-1/`:
+
+```powershell
 cd hands-on-1
+```
+
+### 3. Create a virtual environment (`venv`)
+
+A **virtual environment** is an isolated Python install that lives in a folder *next to your project* (here: `.venv/`). It exists so the packages this practical needs don't pollute your global Python or fight with other projects. If you ever want to start over, just delete the `.venv/` folder.
+
+```powershell
 python -m venv .venv
-.\.venv\Scripts\activate           # PowerShell: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-playwright install chromium        # first time only, ~150 MB
 ```
 
-For **Live mode** only:
+This creates `.venv/` in about 5 seconds. No download — it just copies your existing Python into that folder.
 
+### 4. Activate the venv
+
+Activation tells your terminal *"when I say `python` or `pip`, use the one inside `.venv/`."* You'll know it worked when your prompt gets a `(.venv)` prefix.
+
+The exact command depends on your shell:
+
+```powershell
+# PowerShell (default on Windows 10/11)
+.venv\Scripts\Activate.ps1
+```
+```
+:: Command Prompt (cmd.exe)
+.venv\Scripts\activate.bat
+```
 ```bash
-copy .env.example .env             # then edit .env, set ANTHROPIC_API_KEY=sk-...
+# Git Bash on Windows
+source .venv/Scripts/activate
+# macOS / Linux
+source .venv/bin/activate
 ```
+
+**PowerShell troubleshooting.** If you see `running scripts is disabled on this system`, run this *once* (per machine) in an Administrator PowerShell, then try again:
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Sanity check that activation worked:
+```powershell
+python -c "import sys; print(sys.executable)"
+# should print a path ending in ...hands-on-1\.venv\Scripts\python.exe
+```
+
+### 5. Install the Python dependencies
+
+`requirements.txt` lists everything the practical needs (Flask, Playwright, the Anthropic SDK, python-dotenv, matplotlib). Install them into the venv:
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Downloads ~150 MB of packages and takes 1–3 minutes depending on your connection. When it finishes you'll see a single line like:
+
+```
+Successfully installed annotated-types-0.7.0 anthropic-0.109.1 ... flask-3.1.3 ... playwright-1.60.0 ...
+```
+
+> **Tip:** Using `python -m pip` instead of plain `pip` guarantees you're installing into the **same** Python that's currently active. It's the safest habit on Windows where multiple Pythons often coexist.
+
+### 6. Install the Chromium browser for Playwright
+
+Playwright is the library that drives a real browser. The `pip install` in step 5 installed the **library**, but not the **browser itself** — that's a separate ~150 MB download:
+
+```powershell
+python -m playwright install chromium
+```
+
+This downloads two things into your user profile (not into the project):
+
+- **Chrome for Testing** (~180 MB) — the browser Playwright opens visibly so you can watch the agent click.
+- **Chrome Headless Shell** (~110 MB) — a smaller, no-window version used for headless runs.
+
+When it's done you'll see two `downloaded to ...\AppData\Local\ms-playwright\...` lines. Total disk after this step: ~200 MB inside `.venv/` + ~300 MB in `ms-playwright/`.
+
+### 7. (Live mode only) Create your `.env` file
+
+The practical has two modes:
+
+- **Mock mode** (default) — uses a deterministic Python policy for the *decide* step. **No API key, no cost.** This is what you should run first.
+- **Live mode** — Claude decides each action from a screenshot. Needs an Anthropic API key.
+
+If you only want to run Mock mode, **skip this step.** For Live mode, create your env file:
+
+```powershell
+# PowerShell or cmd
+copy .env.example .env
+
+# Git Bash / macOS / Linux
+cp .env.example .env
+```
+
+Open `.env` in your editor and set the key:
+
+```dotenv
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
+```
+
+Get a key from [console.anthropic.com](https://console.anthropic.com) → **Settings → API Keys → Create Key**. Treat it like a password — `.env` is already listed in `.gitignore`, so it won't be accidentally committed.
+
+### 8. Verify the setup (smoke test)
+
+Paste this one-liner into your terminal to confirm imports work and Playwright can actually launch a browser:
+
+```powershell
+python -c "import flask, anthropic; from playwright.sync_api import sync_playwright; import importlib.metadata as m; print('flask    ', m.version('flask')); print('anthropic', anthropic.__version__); print('playwright', m.version('playwright')); print('dotenv   ', m.version('python-dotenv')); p = sync_playwright().start(); b = p.chromium.launch(headless=True); page = b.new_page(); page.set_content('<h1>hello legacy</h1>'); print('rendered :', page.inner_text('h1')); b.close(); p.stop(); print('OK - smoke test passed')"
+```
+
+Expected output:
+
+```
+flask     3.1.3
+anthropic 0.109.1
+playwright 1.60.0
+dotenv    1.2.2
+rendered : hello legacy
+OK - smoke test passed
+```
+
+If you see those six lines, **everything is wired up** and you're ready to run the practical. If you hit an error, see the *Troubleshooting* table below.
+
+### Troubleshooting cheat-sheet
+
+| Symptom | What it means | Fix |
+|---|---|---|
+| `python : The term 'python' is not recognized` | Python isn't on your PATH. | Reinstall Python with **Add to PATH** checked, then open a new terminal. |
+| `running scripts is disabled on this system` when activating | PowerShell's default policy blocks scripts. | Run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` once. |
+| `(.venv)` prefix never appears in the prompt | Activation didn't take effect. | Use the activate command for *your* shell (PowerShell vs cmd vs bash) and check `python -c "import sys; print(sys.executable)"` points inside `.venv/`. |
+| `ModuleNotFoundError: No module named 'flask'` | Wrong Python is being used. | Re-activate the venv, then re-check `sys.executable`. |
+| `Executable doesn't exist at ...\ms-playwright\chromium-...` | Step 6 was skipped. | Run `python -m playwright install chromium`. |
+| `anthropic.AuthenticationError` (Live mode only) | API key missing or wrong. | Confirm `.env` has `ANTHROPIC_API_KEY=sk-ant-...` with no quotes or spaces; re-run. |
+| `DeprecationWarning: '__version__' attribute is deprecated` | Harmless future-Flask warning. | Ignore. |
 
 ---
 
