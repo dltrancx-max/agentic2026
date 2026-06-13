@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Login &mdash; LegacyForms{% endblock %}
+{% block body %}
+<h2>Sign in</h2>
+<form method="post" action="{{ url_for('login') }}">
+  <label for="username">Username</label>
+  <input type="text" id="username" name="username" autocomplete="off" autofocus>
+
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password" autocomplete="off">
+
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+  <div><input type="submit" name="submit" value="Sign in"></div>
+</form>
+<div class="legacy-note">
+  Authorized users only. This terminal is monitored.
+</div>
+{% endblock %}

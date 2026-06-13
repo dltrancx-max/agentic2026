@@ -1,0 +1,68 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "LegacyForms — start Flask GUI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "legacy_app.app",
+      "cwd": "${workspaceFolder}/hands-on-1",
+      "python": "${workspaceFolder}/hands-on-1/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Orchestrator — Mock (visible browser)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "orchestrator.run",
+      "cwd": "${workspaceFolder}/hands-on-1",
+      "python": "${workspaceFolder}/hands-on-1/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Orchestrator — Mock (headless)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "orchestrator.run",
+      "args": ["--headless"],
+      "cwd": "${workspaceFolder}/hands-on-1",
+      "python": "${workspaceFolder}/hands-on-1/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Orchestrator — Live (Claude)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "orchestrator.run",
+      "args": ["--live"],
+      "cwd": "${workspaceFolder}/hands-on-1",
+      "python": "${workspaceFolder}/hands-on-1/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Orchestrator — Reset state",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "orchestrator.run",
+      "args": ["--reset"],
+      "cwd": "${workspaceFolder}/hands-on-1",
+      "python": "${workspaceFolder}/hands-on-1/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Demo: Flask + Orchestrator (Mock)",
+      "configurations": [
+        "LegacyForms — start Flask GUI",
+        "Orchestrator — Mock (visible browser)"
+      ],
+      "stopAll": true
+    }
+  ]
+}

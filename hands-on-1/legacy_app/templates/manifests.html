@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Manifests &mdash; LegacyForms{% endblock %}
+{% block body %}
+<h2>Supply Chain Manifests</h2>
+
+<form method="post" action="{{ url_for('run_query') }}">
+  <label for="quarter">Quarter</label>
+  <select id="quarter" name="quarter">
+    {% for q in quarters %}
+      <option value="{{ q }}" {% if q == selected_quarter %}selected{% endif %}>{{ q }} 2025</option>
+    {% endfor %}
+  </select>
+  <div>
+    <input type="submit" name="submit" value="Run Query">
+  </div>
+</form>
+
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+{% if results is not none %}
+  <h2 style="margin-top:24px">Results &mdash; {{ selected_quarter }} 2025 ({{ results|length }} row{% if results|length != 1 %}s{% endif %})</h2>
+  {% if results %}
+    <table>
+      <tr>
+        <th>MANIFEST_NO</th><th>SHIP_DT</th><th>SUPP_CD</th>
+        <th>ITEM</th><th>QTY</th><th>UOM</th><th>AMT</th>
+      </tr>
+      {% for r in results %}
+      <tr>
+        <td>{{ r.MANIFEST_NO }}</td>
+        <td>{{ r.SHIP_DT }}</td>
+        <td>{{ r.SUPP_CD }}</td>
+        <td>{{ r.ITEM }}</td>
+        <td>{{ r.QTY }}</td>
+        <td>{{ r.UOM }}</td>
+        <td>{{ r.AMT }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <form method="post" action="{{ url_for('export_csv') }}" style="margin-top:14px">
+      <input type="hidden" name="quarter" value="{{ selected_quarter }}">
+      <input type="submit" name="submit" value="Export CSV">
+    </form>
+  {% else %}
+    <div class="legacy-note">No rows matched.</div>
+  {% endif %}
+{% endif %}
+
+<div class="legacy-note">
+  Signed in as <b>{{ session['user'] }}</b> &middot;
+  <a href="{{ url_for('logout') }}">Sign out</a>
+</div>
+{% endblock %}
