@@ -259,29 +259,177 @@ If you see those six lines, **everything is wired up** and you're ready to run t
 
 ---
 
-## Running the demo
+## Running the demo (step by step)
 
-Once the build is complete you will have one entrypoint:
+You'll run **two processes at the same time**, in **two terminals**:
 
-```bash
-# Terminal 1 — start the legacy GUI
-python -m legacy_app.app
+| Terminal | What it runs | Stays running? |
+|---|---|---|
+| **Terminal 1** | The legacy GUI (Flask web server) | Yes — leave it alone for the whole demo |
+| **Terminal 2** | The orchestrator (drives the worker via Chromium) | Exits when the demo finishes (~30 seconds) |
 
-# Terminal 2 — run the orchestrator (mock mode by default)
-python -m orchestrator.run                  # mock
-python -m orchestrator.run --live           # Claude-driven
-python -m orchestrator.run --reset          # wipe checkpoint + legacy timeout flag
+### 1. Open two terminals
+
+**In VS Code** (recommended): open the integrated terminal with ``Ctrl+` `` (backtick). To get a second one, click the **`+`** icon at the top-right of the terminal panel, or use ``Ctrl+Shift+` ``. You'll see two terminals side by side in the bottom panel.
+
+**Outside VS Code:** open two PowerShell windows from the Start menu.
+
+### 2. In **each** terminal, activate the venv and cd into `hands-on-1`
+
+This is the most common gotcha for first-timers: each new terminal starts at your home directory with the venv **inactive**. You have to activate it again *per terminal*.
+
+```powershell
+cd path\to\agentic2026\hands-on-1
+.venv\Scripts\Activate.ps1
 ```
 
-What you should see, in this order:
-1. Chromium opens, you watch the worker log in, pick **Q3**, run the query, and click **Export**.
-2. The forced timeout fires; the worker reports `status = timeout` and exits.
-3. The orchestrator logs the failure, writes the checkpoint, and re-invokes the worker.
-4. The worker logs back in and completes the export.
-5. The Coder step normalizes the CSV and prints the reconciliation report.
-6. `output/manifests_23ai.csv` and `output/reconciliation.txt` appear.
+You'll know it worked when your prompt has the `(.venv)` prefix. Do this in **both** terminals before moving on.
 
-If you kill the orchestrator with `Ctrl+C` at any point and re-run it, it picks up from the last checkpoint — that is the long-horizon resilience guarantee in action.
+### 3. Terminal 1 — start the LegacyForms GUI
+
+```powershell
+python -m legacy_app.app
+```
+
+You should see:
+
+```
+2026-06-13 17:51:15 legacy_app INFO LegacyForms starting on http://127.0.0.1:5000 (timeout after 3 protected calls)
+ * Serving Flask app 'app'
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+```
+
+**Leave this terminal alone.** It is your "server" — the orchestrator's worker will drive it. Optional: open `http://127.0.0.1:5000` in your own browser and log in as `analyst / legacy123` to see what the legacy app actually looks like.
+
+### 4. Terminal 2 — run the orchestrator (Mock mode)
+
+```powershell
+python -m orchestrator.run
+```
+
+(Don't pass any flag for now — that's Mock mode, no API key needed.) A **Chromium window will open** and you'll watch it:
+
+1. Log in as `analyst` with the demo password.
+2. Pick **Q3** from the Quarter dropdown and click **Run Query**.
+3. See 7 manifest rows render.
+4. Click **Export CSV** — and instead of downloading, the page becomes **"Session Timeout"**.
+
+At that moment the worker reports `status = timeout` and exits. Look at Terminal 2 — you should see:
+
+```
+worker | step  4: perceive http://127.0.0.1:5000/export -> TIMEOUT_PAGE
+worker |   !!  TIMEOUT_PAGE seen — bailing out
+orchestrator WARNING recover(session-timeout) attempt=1
+orchestrator INFO EXTRACT  attempt=2  delegating to worker (mock)…
+```
+
+This is **the moment the practical is built around.** A rigid RPA script would have crashed. The orchestrator catches the failure, writes the checkpoint, and re-invokes the worker. Chromium opens again, repeats the login → query → export flow, and this time the **download fires**. Then NORMALIZE runs and you see:
+
+```
+RECONCILIATION REPORT
+=====================
+source       : manifests_q3_2025.csv
+target       : manifests_23ai.csv
+rows in      : 7
+rows out     : 7
+amount in    : 111,375.00
+amount out   : 111,375.00
+row check    : OK
+amount check : OK
+
+Normalized CSV : E:\...\hands-on-1\output\manifests_23ai.csv
+Recovery count : 1  (each was a Session Timeout the worker recovered from)
+```
+
+**`Recovery count: 1` is the proof.** The system survived a failure that would have killed a traditional pipeline.
+
+### 5. Where the output lives
+
+Open these files to inspect what was produced:
+
+| File | What it is |
+|---|---|
+| `hands-on-1/output/downloads/manifests_q3_2025.csv` | Raw legacy CSV — old column names (`MANIFEST_NO`, `SHIP_DT`), `DD-MON-YY` dates |
+| `hands-on-1/output/manifests_23ai.csv` | Normalized — new column names (`manifest_id`, `ship_date`), ISO dates |
+| `hands-on-1/output/reconciliation.txt` | The reconciliation report above, as a saved file |
+| `hands-on-1/checkpoints/state.json` | Final orchestrator state — `phase: "DONE"`, `attempts: 1` |
+
+### 6. Running the demo a *second* time — use `--reset` first
+
+The session-timeout is a **one-shot** disruption per Flask process — once the timeout fires, the Flask app sets a flag and won't fire it again. So if you just re-run `python -m orchestrator.run`, the worker won't hit a timeout, the orchestrator will never call `recover()`, and you'll miss the entire point of the demo.
+
+**Always reset between demo runs:**
+
+```powershell
+python -m orchestrator.run --reset
+```
+
+This does three things:
+
+1. Deletes `checkpoints/state.json` (so the orchestrator starts fresh).
+2. Deletes `output/downloads/` and the previous normalized CSV + report.
+3. Calls `POST /admin/reset` on the Flask app to clear the timeout flag.
+
+(Step 3 needs the Flask app running — start Terminal 1 first.) Then run `python -m orchestrator.run` again and you'll see the recovery beat fire just like the first time.
+
+### 7. Live mode (`--live`) — Claude makes the decisions
+
+Mock mode uses a hard-coded Python policy for the *decide* step. Live mode swaps in **Claude with vision tool-use**: every step the worker takes a screenshot, sends it to Claude, and Claude picks the next action.
+
+**Prerequisites:**
+
+- You must have already created `.env` and set `ANTHROPIC_API_KEY` (see step 7 in *Setup*). If the key is missing the orchestrator exits with a clear error before opening the browser.
+- Cost: roughly **a few cents per full run** (6–8 turns of Claude Sonnet with a screenshot each). Mock mode is free.
+
+**Run it:**
+
+```powershell
+python -m orchestrator.run --reset            # clean state first
+python -m orchestrator.run --live
+```
+
+What's different:
+
+- Each step is slower (~1–3 seconds of API latency per decision vs. instant for Mock).
+- Terminal 2 logs `live: tool=fill_field args={'label': 'Username', 'value': 'analyst'}` — these are **Claude's chosen actions**, not pre-baked.
+- Claude has never seen a "Session Timeout" page before this run; when it appears, Claude calls `report_timeout()` itself. That's the part that's genuinely impressive.
+
+The end result is the same files and the same reconciliation report — but with `policy=LIVE` in the worker audit lines.
+
+### 8. One-click run in VS Code
+
+If you're in VS Code with this repo open, you don't need two terminals — there's a compound launch config. Open the **Run and Debug** panel (`Ctrl+Shift+D`), pick **"Demo: Flask + Orchestrator (Mock)"** from the dropdown, and press the green play button (or hit `F5`). VS Code starts the Flask app and the orchestrator together in two terminals automatically. To stop, press the red square in the debug toolbar.
+
+Other launch entries available the same way:
+
+- **LegacyForms — start Flask GUI** — Terminal 1 only
+- **Orchestrator — Mock (visible browser)** — Terminal 2 only, Mock mode
+- **Orchestrator — Mock (headless)** — Mock mode, no visible Chromium (faster, less dramatic)
+- **Orchestrator — Live (Claude)** — Claude-driven
+- **Orchestrator — Reset state** — runs `--reset` once
+
+### 9. Stopping the demo
+
+- **Terminal 2** exits on its own when the orchestrator finishes (success or failure).
+- **Terminal 1** (Flask) keeps running until you press `Ctrl+C` in that terminal. Always stop it before closing your laptop or the port stays bound and the next run will complain.
+
+### Crash and resume — the long-horizon guarantee
+
+While Mock mode is running, **kill Terminal 2 with `Ctrl+C` between any two steps** and immediately re-run `python -m orchestrator.run` (no `--reset` this time). The orchestrator reads `checkpoints/state.json`, picks up where it left off, and finishes the job. That is the resilience guarantee in action — and a useful thing to demonstrate live to people who haven't seen it.
+
+### Runtime troubleshooting
+
+| Symptom | What it means | Fix |
+|---|---|---|
+| Terminal 1: `OSError: [WinError 10048] ... port 5000` | Another process is using port 5000. | Stop the other process, or set `LEGACY_PORT=5050` in `.env` and re-run both terminals. |
+| Terminal 2: `ModuleNotFoundError: No module named 'agent'` | You're in the wrong directory. | `cd` into `hands-on-1/` first. |
+| Terminal 2: `Executable doesn't exist at ...\ms-playwright\chromium-...` | The browser install step was skipped. | `python -m playwright install chromium` once. |
+| Chromium opens but worker exits with `error: no rule for perception='UNKNOWN'` | The legacy app isn't reachable / template didn't render as expected. | Check Terminal 1 is up; visit `http://127.0.0.1:5000` in your own browser. |
+| Worker hangs for 30+ seconds at `Export CSV` step | First-run timeout is firing but `expect_download` is waiting. (Should resolve in <5s with current code.) | Confirm `agent/tools.py` has the 4 s `timeout_ms` — `git pull` if older. |
+| Live mode: `Live mode needs ANTHROPIC_API_KEY` | `.env` missing or key blank. | Step 7 of *Setup*. Make sure there are no quotes around the key value. |
+| Live mode: `anthropic.AuthenticationError` | Key is set but wrong / revoked. | Generate a fresh key at `console.anthropic.com` and update `.env`. |
+| Second mock run shows `Recovery count: 0` | Timeout flag stayed fired from the previous run. | Run `python -m orchestrator.run --reset` first. |
 
 ---
 
