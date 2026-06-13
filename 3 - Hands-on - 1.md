@@ -74,6 +74,31 @@ Four parts, in build order:
 
 The split is intentional and worth absorbing: **the worker has no idea what the goal is**, and **the orchestrator has no idea how to click a button**. They communicate through a tiny status contract. That separation is what makes the system survive a timeout — the worker returns *failure*, the orchestrator owns *what to do about it*.
 
+### Why Flask, not FastAPI?
+
+A fair question — FastAPI is the modern default for new Python web work, so why is the legacy GUI built on Flask?
+
+| | Flask (chose this) | FastAPI |
+|---|---|---|
+| **What it serves** | Server-rendered HTML pages with Jinja2 templates | JSON over REST, OpenAPI-first |
+| **Mental model** | Form post → templated HTML → form post → … | Pydantic request model → JSON response |
+| **Era / vibe** | 2010, the dominant intranet-app framework of the period we're mimicking | 2018, modern API stack |
+| **Async** | Sync handlers, one thread per request | Async-first, designed for high-throughput services |
+
+Five concrete reasons for *this* practical specifically:
+
+1. **The whole point of the scenario is "no API."** FastAPI is *literally an API framework* — using it to model the system the agent has to drive would contradict the architecture. Flask + HTML forms is what "legacy app with no integration tier" actually looks like.
+2. **HTML templates are a first-class Flask citizen.** Jinja2 + `render_template` is built in. FastAPI can use Jinja, but it's an add-on — its sweet spot is JSON, not HTML.
+3. **`@app.route` + `request.form` maps 1:1 to "the user clicked a form button."** No Pydantic schemas, no response models — just *here's the form data, here's the page back*. That's the legacy mental model the worker needs to navigate.
+4. **It *looks* legacy at first glance.** A senior developer opening `app.py` sees Flask + Jinja and immediately reads "old internal app." That visual cue is the teaching effect we want.
+5. **Sync is fine and clearer here.** We're modelling one user clicking through one screen at a time. FastAPI's async-first design would add `async/await` ceremony for zero throughput benefit on a demo with a single client.
+
+**Where FastAPI *would* be the right call** (and where you'd reach for it in a real version of this system):
+
+- The *new* Oracle 23ai-side ingestion service that receives the normalized data.
+- An **MCP server** exposing the legacy system as proper tools to agents — the second-best alternative to GUI-driving it, per the *API → MCP → GUI agent* rule of thumb.
+- Any modern microservice you'd build *to replace* the system the agent currently drives.
+
 ---
 
 ## Two ways to run it
